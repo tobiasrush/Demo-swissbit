@@ -21,7 +21,7 @@
   <!-- Header -->
   <header class="header">
     <div class="logo-row">
-      <img src="./swissbit-logo.svg" alt="Swissbit" class="logo logo-swissbit">
+      <img src="./swissbit_logo.png" alt="Swissbit" class="logo logo-swissbit">
       <span class="logo-divider"></span>
       <img src="./ideem-logo.png" alt="Ideem" class="logo logo-ideem">
     </div>
@@ -33,8 +33,10 @@
   <main class="card">
 
     <!-- Username — always visible -->
-    <label for="username">User ID</label>
-    <input type="text" id="username" placeholder="Enter your user ID" autocomplete="off">
+    <div class="username-row">
+      <label for="username">User ID</label>
+      <input type="text" id="username" placeholder="Enter your user ID" autocomplete="off">
+    </div>
 
     <!-- SETUP screen — new device, no credentials -->
     <div class="screen active" id="SETUP">
@@ -55,9 +57,6 @@
 
     <!-- ACTIONS screen — logged in -->
     <div class="screen" id="ACTIONS">
-      <h2>Welcome, <span id="display-name"></span></h2>
-      <p class="subtitle">Use your iShield key for step-up authentication</p>
-
       <div class="toggle-row">
         <label class="toggle-label" for="actions-use-passkeys">Use Passkeys</label>
         <label class="toggle-switch">
@@ -73,9 +72,59 @@
         <button class="btn btn-action" data-action="add-beneficiary">Add Beneficiary</button>
       </div>
 
-      <div id="action-status" class="flash"></div>
+      <div id="action-status" class="flash" role="status" aria-live="polite"></div>
 
       <button id="logout-btn" class="btn btn-secondary">Log Out</button>
+
+      <div class="challenge-display" id="ishield-challenge-display" hidden>
+        <div class="challenge-section-header">
+          <span class="challenge-section-label">iShield Key</span>
+          <img src="./swissbit.png" alt="iShield" id="icon-ishield" class="auth-icon">
+        </div>
+        <details id="ishield-challenge-details">
+          <summary>Challenge: <span id="ishield-challenge-preview" class="challenge-value">--</span><button class="btn-copy" aria-label="Copy value" onclick="event.stopPropagation()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>
+</button></summary>
+          <pre class="challenge-full" id="ishield-challenge-full"></pre>
+        </details>
+        <details id="ishield-signed-challenge-details">
+          <summary>Signed Challenge: <span id="ishield-signed-challenge-preview" class="challenge-value">--</span><button class="btn-copy" aria-label="Copy value" onclick="event.stopPropagation()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>
+</button></summary>
+          <pre class="challenge-full" id="ishield-signed-challenge-full"></pre>
+        </details>
+      </div>
+      <div class="challenge-display" id="passkeys-challenge-display" hidden>
+        <div class="challenge-section-header">
+          <span class="challenge-section-label">Passkeys+</span>
+          <img src="./zsm_chip.png" alt="ZSM" id="icon-zsm" class="auth-icon" hidden>
+          <img src="./passkeys.png" alt="Passkeys" id="icon-passkeys" class="auth-icon" hidden>
+        </div>
+        <details id="challenge-details">
+          <summary>Challenge: <span id="challenge-preview" class="challenge-value">--</span><button class="btn-copy" aria-label="Copy value" onclick="event.stopPropagation()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>
+</button></summary>
+          <pre class="challenge-full" id="challenge-full"></pre>
+        </details>
+        <details id="signed-challenge-details">
+          <summary>Signed Challenge: <span id="signed-challenge-preview" class="challenge-value">--</span><button class="btn-copy" aria-label="Copy value" onclick="event.stopPropagation()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>
+</button></summary>
+          <pre class="challenge-full" id="signed-challenge-full"></pre>
+        </details>
+      </div>
     </div>
 
     <!-- Status pills — always visible -->
@@ -87,12 +136,12 @@
     </div>
 
     <!-- Flash message for enrollment feedback -->
-    <div id="flash-status" class="flash"></div>
+    <div id="flash-status" class="flash" role="status" aria-live="polite"></div>
 
   </main>
 
   <!-- Confirmation Popup -->
-  <div id="confirm-popup" class="popup-overlay">
+  <div id="confirm-popup" class="popup-overlay" role="dialog" aria-modal="true" aria-labelledby="popup-message">
     <div class="popup-card">
       <p id="popup-message"></p>
       <div class="popup-buttons">
@@ -107,6 +156,9 @@
     <button id="suspend-device" class="btn btn-warning-small" disabled>Suspend Device</button>
     <button id="reset-device" class="btn btn-danger-small">Reset Device</button>
   </footer>
+
+  <!-- Screen reader announcements -->
+  <div id="screen-announcer" class="sr-only" aria-live="assertive"></div>
 
   <!-- Scripts -->
   <script src="./state.js"></script>

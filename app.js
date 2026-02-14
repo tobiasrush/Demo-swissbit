@@ -39,16 +39,45 @@ function getUsername() {
 // ---------------------------------------------------------------------------
 let popupResolve = null;
 
+let popupPreviousFocus = null;
+
 function showPopup(message) {
   return new Promise((resolve) => {
+    popupPreviousFocus = document.activeElement;
     document.getElementById('popup-message').textContent = message;
-    document.getElementById('confirm-popup').style.display = 'flex';
+    const popup = document.getElementById('confirm-popup');
+    popup.style.display = 'flex';
     popupResolve = resolve;
+    document.getElementById('popup-continue').focus();
+    document.addEventListener('keydown', popupKeyHandler);
   });
 }
 
+function popupKeyHandler(e) {
+  if (e.key === 'Escape') {
+    hidePopup('cancel');
+    return;
+  }
+  if (e.key === 'Tab') {
+    const cancelBtn = document.getElementById('popup-cancel');
+    const continueBtn = document.getElementById('popup-continue');
+    if (e.shiftKey && document.activeElement === cancelBtn) {
+      e.preventDefault();
+      continueBtn.focus();
+    } else if (!e.shiftKey && document.activeElement === continueBtn) {
+      e.preventDefault();
+      cancelBtn.focus();
+    }
+  }
+}
+
 function hidePopup(action) {
+  document.removeEventListener('keydown', popupKeyHandler);
   document.getElementById('confirm-popup').style.display = 'none';
+  if (popupPreviousFocus) {
+    popupPreviousFocus.focus();
+    popupPreviousFocus = null;
+  }
   if (popupResolve) {
     popupResolve(action);
     popupResolve = null;
@@ -101,6 +130,68 @@ function bufferToBase64url(buffer) {
   let binary = '';
   for (const b of bytes) binary += String.fromCharCode(b);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+async function hashSHA256(input, format = 'hex') {
+  if (typeof input !== 'string') throw new TypeError('hashSHA256 expects a string input.');
+  const data = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const bytes = new Uint8Array(digest);
+  if (format === 'base64') {
+    let binary = '';
+    bytes.forEach(byte => binary += String.fromCharCode(byte));
+    return btoa(binary);
+  }
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function updateChallengeDisplay(challenge, signedChallenge) {
+  const PREVIEW_LEN = 15;
+  const isReset = challenge === '--';
+  const container = document.getElementById('passkeys-challenge-display');
+  const prev = document.getElementById('challenge-preview');
+  const full = document.getElementById('challenge-full');
+  const sPrev = document.getElementById('signed-challenge-preview');
+  const sFull = document.getElementById('signed-challenge-full');
+  if (prev && full) {
+    prev.textContent = challenge.substring(0, PREVIEW_LEN) + (challenge.length > PREVIEW_LEN ? '...' : '');
+    full.textContent = challenge;
+  }
+  if (sPrev && sFull) {
+    sPrev.textContent = signedChallenge.substring(0, PREVIEW_LEN) + (signedChallenge.length > PREVIEW_LEN ? '...' : '');
+    sFull.textContent = signedChallenge;
+  }
+  if (container) container.hidden = isReset;
+  document.getElementById('challenge-details')?.removeAttribute('open');
+  document.getElementById('signed-challenge-details')?.removeAttribute('open');
+}
+
+function updateIShieldChallengeDisplay(challenge, signedChallenge) {
+  const PREVIEW_LEN = 15;
+  const container = document.getElementById('ishield-challenge-display');
+  const prev = document.getElementById('ishield-challenge-preview');
+  const full = document.getElementById('ishield-challenge-full');
+  const sPrev = document.getElementById('ishield-signed-challenge-preview');
+  const sFull = document.getElementById('ishield-signed-challenge-full');
+  if (prev && full) {
+    prev.textContent = challenge.substring(0, PREVIEW_LEN) + (challenge.length > PREVIEW_LEN ? '...' : '');
+    full.textContent = challenge;
+  }
+  if (sPrev && sFull) {
+    sPrev.textContent = signedChallenge.substring(0, PREVIEW_LEN) + (signedChallenge.length > PREVIEW_LEN ? '...' : '');
+    sFull.textContent = signedChallenge;
+  }
+  if (container) container.hidden = false;
+  document.getElementById('ishield-challenge-details')?.removeAttribute('open');
+  document.getElementById('ishield-signed-challenge-details')?.removeAttribute('open');
+}
+
+function updateAuthIcons({ ishield = false, zsm = false, passkeys = false } = {}) {
+  document.getElementById('icon-ishield').hidden = !ishield;
+  document.getElementById('icon-zsm').hidden = !zsm;
+  document.getElementById('icon-passkeys').hidden = !passkeys;
+  const ishieldDisplay = document.getElementById('ishield-challenge-display');
+  if (ishieldDisplay) ishieldDisplay.hidden = !ishield;
 }
 
 function base64urlToBuffer(base64url) {
@@ -205,7 +296,7 @@ async function webauthnAuthenticate() {
   console.log('[FIDO2 Auth] Starting authentication for user:', user);
 
   try {
-    await navigator.credentials.get({
+    const assertion = await navigator.credentials.get({
       publicKey: {
         challenge,
         rpId: location.hostname,
@@ -215,6 +306,21 @@ async function webauthnAuthenticate() {
       }
     });
     console.log('[FIDO2 Auth] Success');
+
+    // Extract challenge and signature from the assertion
+    try {
+      const clientDataHash = await hashSHA256(
+        new TextDecoder().decode(assertion.response.clientDataJSON)
+      );
+      const signatureHex = Array.from(
+        new Uint8Array(assertion.response.signature),
+        byte => byte.toString(16).padStart(2, '0')
+      ).join('');
+      updateIShieldChallengeDisplay(clientDataHash, signatureHex);
+    } catch (err) {
+      console.warn('[FIDO2 Auth] Could not extract challenge data:', err.message);
+    }
+
     return true;
   } catch (err) {
     console.error('[FIDO2 Auth] Error:', { name: err.name, message: err.message });
@@ -368,6 +474,18 @@ async function authenticate(user, usingPasskeysPlus = false) {
   }
 
   const credential = result?.credential ?? result;
+
+  // Extract challenge data from response before stringify
+  if (credential?.response) {
+    try {
+      const challenge = await hashSHA256(JSON.stringify(credential.response.clientDataJSON));
+      const signedChallenge = JSON.stringify(credential.response.signature);
+      updateChallengeDisplay(challenge, signedChallenge);
+    } catch (err) {
+      console.warn('[authenticate] Could not extract challenge data:', err.message);
+    }
+  }
+
   const output = JSON.stringify(credential);
   console.log('[authenticate] Output credential:', output.substring(0, 200) + (output.length > 200 ? '...' : ''));
 
@@ -415,14 +533,30 @@ async function validateToken(userId, token) {
 // ---------------------------------------------------------------------------
 // showScreen — simple screen switcher
 // ---------------------------------------------------------------------------
+const SCREEN_ANNOUNCEMENTS = {
+  'SETUP': 'Setup screen. Enter your user ID and trust this device.',
+  'LOGIN': 'Login screen. Authenticate to continue.',
+  'ACTIONS': 'Actions screen. You are logged in.'
+};
+
 function showScreen(screenId) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active');
+    s.setAttribute('aria-hidden', 'true');
+  });
   const target = document.getElementById(screenId);
-  if (target) target.classList.add('active');
+  if (target) {
+    target.classList.add('active');
+    target.setAttribute('aria-hidden', 'false');
+  }
 
   // Username field is readonly on ACTIONS screen, editable otherwise
   const usernameEl = document.getElementById('username');
   usernameEl.readOnly = (screenId === 'ACTIONS');
+
+  // Announce screen change to screen readers
+  const announcer = document.getElementById('screen-announcer');
+  if (announcer) announcer.textContent = SCREEN_ANNOUNCEMENTS[screenId] || '';
 }
 
 // ---------------------------------------------------------------------------
@@ -450,15 +584,24 @@ async function updateUI() {
   }
 
   // Update status pills
-  document.getElementById('ishield-status').textContent = !user ? '--' : (hasIShield ? 'true' : 'false');
-  document.getElementById('zsm-status').textContent = !user ? '--' : (hasZSM ? 'true' : 'false');
-  document.getElementById('passkey-status').textContent = !user ? '--' : (hasPasskey ? 'true' : 'false');
+  function setPill(el, value) {
+    el.textContent = value;
+    const pill = el.closest('.pill');
+    pill.classList.remove('pill-success', 'pill-danger', 'pill-neutral');
+    if (value === 'true' || value === 'Active') pill.classList.add('pill-success');
+    else if (value === 'false' || value === 'Suspended') pill.classList.add('pill-danger');
+    else pill.classList.add('pill-neutral');
+  }
+
+  setPill(document.getElementById('ishield-status'), !user ? '--' : (hasIShield ? 'true' : 'false'));
+  setPill(document.getElementById('zsm-status'), !user ? '--' : (hasZSM ? 'true' : 'false'));
+  setPill(document.getElementById('passkey-status'), !user ? '--' : (hasPasskey ? 'true' : 'false'));
 
   // Passkeys+ pill
   const fullyEnrolled = hasIShield && hasZSM && hasPasskey;
   const suspended = isSuspended();
   const ppStatus = !user || !fullyEnrolled ? 'Not Enrolled' : (suspended ? 'Suspended' : 'Active');
-  document.getElementById('passkeys-plus-status').textContent = ppStatus;
+  setPill(document.getElementById('passkeys-plus-status'), ppStatus);
 
   // Suspend button — enabled only when fully enrolled and not already suspended
   document.getElementById('suspend-device').disabled = !(fullyEnrolled && !suspended);
@@ -479,7 +622,6 @@ async function updateUI() {
   if (hasZSM && hasPasskey) {
     // Device is trusted — show Login screen (or Actions if already logged in)
     if (STATE.loginID) {
-      document.getElementById('display-name').textContent = user;
       showScreen('ACTIONS');
     } else {
       showScreen('LOGIN');
@@ -496,6 +638,11 @@ async function updateUI() {
 async function trustDevice() {
   const user = getUsername();
   if (!user) return;
+
+  const btn = document.getElementById('trust-device-btn');
+  btn.classList.add('loading');
+  btn.setAttribute('aria-busy', 'true');
+  btn.setAttribute('aria-disabled', 'true');
 
   try {
     // Step 1: Enroll iShield USB key (raw WebAuthn)
@@ -539,6 +686,10 @@ async function trustDevice() {
     console.error('[trustDevice] Error:', err);
     showFlash('flash-status', 'Trust Device failed', 'failure');
     await updateUI();
+  } finally {
+    btn.classList.remove('loading');
+    btn.removeAttribute('aria-busy');
+    btn.removeAttribute('aria-disabled');
   }
 }
 
@@ -548,6 +699,11 @@ async function trustDevice() {
 async function login() {
   const user = getUsername();
   if (!user) return;
+
+  const btn = document.getElementById('login-btn');
+  btn.classList.add('loading');
+  btn.setAttribute('aria-busy', 'true');
+  btn.setAttribute('aria-disabled', 'true');
 
   try {
     // If suspended, require iShield + Passkeys+ to reactivate
@@ -569,7 +725,7 @@ async function login() {
       STATE.loginID = user;
       STATE.credentialsValid = true;
       STATE.token = reactivateCredential;
-      document.getElementById('display-name').textContent = user;
+      updateAuthIcons({ ishield: true, zsm: true, passkeys: true });
       await updateUI();
       showFlash('flash-status', 'Device reactivated', 'success');
       return;
@@ -587,11 +743,15 @@ async function login() {
     STATE.loginID = user;
     STATE.credentialsValid = true;
     STATE.token = credential;
-    document.getElementById('display-name').textContent = user;
+    updateAuthIcons({ zsm: true, passkeys: usePasskeys });
     showScreen('ACTIONS');
   } catch (err) {
     console.error('[login] Error:', err);
     showFlash('flash-status', 'Login failed', 'failure');
+  } finally {
+    btn.classList.remove('loading');
+    btn.removeAttribute('aria-busy');
+    btn.removeAttribute('aria-disabled');
   }
 }
 
@@ -612,6 +772,7 @@ async function handleProtectedAction(actionKey) {
   if (!credential || credential instanceof Error) {
     showFlash('action-status', `${actionLabel} Failed`, 'failure', 2000);
   } else {
+    updateAuthIcons({ zsm: true, passkeys: usePasskeys });
     showFlash('action-status', `${actionLabel} Authorized`, 'success', 2000);
   }
 }
@@ -622,6 +783,8 @@ async function handleProtectedAction(actionKey) {
 function logOut() {
   umfaClient = null;
   STATE.reset();
+  updateChallengeDisplay('--', '--');
+  updateAuthIcons();
   showScreen('LOGIN');
 }
 
@@ -668,9 +831,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Protected action buttons
   document.querySelectorAll('.btn-action').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.preventDefault();
-      handleProtectedAction(btn.dataset.action);
+      btn.classList.add('loading');
+      btn.setAttribute('aria-busy', 'true');
+      btn.setAttribute('aria-disabled', 'true');
+      try {
+        await handleProtectedAction(btn.dataset.action);
+      } finally {
+        btn.classList.remove('loading');
+        btn.removeAttribute('aria-busy');
+        btn.removeAttribute('aria-disabled');
+      }
     });
   });
 
@@ -707,6 +879,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (usernameTimer) clearTimeout(usernameTimer);
     usernameTimer = setTimeout(() => updateUI(), 800);
+  });
+
+  // Copy button handlers
+  document.querySelectorAll('.btn-copy').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const summary = btn.closest('summary');
+      const details = summary?.closest('details');
+      const pre = details?.querySelector('.challenge-full');
+      const text = pre?.textContent;
+      if (text) {
+        try {
+          await navigator.clipboard.writeText(text);
+          const originalHTML = btn.innerHTML;
+          btn.textContent = '✓';
+          btn.style.opacity = '1';
+          btn.style.color = 'var(--color-terminal-value)';
+          setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.style.opacity = '';
+            btn.style.color = '';
+          }, 1500);
+        } catch (err) {
+          console.error('Copy failed:', err);
+        }
+      }
+    });
   });
 
   // Detect existing credentials and show correct screen
