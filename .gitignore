@@ -1,0 +1,9 @@
+node_modules/
+/vendor
+.env*
+.vercel
+.DS_Store
+npm-debug.log*
+tests/
+test-results/
+playwright.config.js

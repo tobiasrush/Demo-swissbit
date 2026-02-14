@@ -1,0 +1,13 @@
+{
+  "name": "demo-swissbit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "postinstall": "npm run build"
+  },
+  "dependencies": {
+    "@ideem/plugins.passkeys-plus": "^1.2.1",
+    "@ideem/zsm-client-sdk": "^2.7.0"
+  }
+}

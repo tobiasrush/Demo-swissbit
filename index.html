@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iShield Key + ZSM | Hardware WebAuthn Demo</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "@ideem/zsm-client-sdk": "./vendor/@ideem/zsm-client-sdk/ZSMClientSDK.js",
+      "@ideem/zsm-client-sdk/": "./vendor/@ideem/zsm-client-sdk/",
+      "@ideem/plugins.passkeys-plus": "./vendor/@ideem/plugins.passkeys-plus/PasskeysPlus.js",
+      "@ideem/plugins.passkeys-plus/": "./vendor/@ideem/plugins.passkeys-plus/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="logo-row">
+      <img src="./swissbit-logo.svg" alt="Swissbit" class="logo logo-swissbit">
+      <span class="logo-divider"></span>
+      <img src="./ideem-logo.png" alt="Ideem" class="logo logo-ideem">
+    </div>
+    <h1>iShield Key + ZSM</h1>
+    <p class="subtitle">Hardware WebAuthn Demo</p>
+  </header>
+
+  <!-- Main Card -->
+  <main class="card">
+
+    <!-- Username — always visible -->
+    <label for="username">User ID</label>
+    <input type="text" id="username" placeholder="Enter your user ID" autocomplete="off">
+
+    <!-- SETUP screen — new device, no credentials -->
+    <div class="screen active" id="SETUP">
+      <button id="trust-device-btn" class="btn btn-primary" disabled>Trust Device</button>
+    </div>
+
+    <!-- LOGIN screen — device trusted, user logged out -->
+    <div class="screen" id="LOGIN">
+      <div class="toggle-row">
+        <label class="toggle-label" for="login-use-passkeys">Passkeys+</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="login-use-passkeys" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <button id="login-btn" class="btn btn-primary">Login</button>
+    </div>
+
+    <!-- ACTIONS screen — logged in -->
+    <div class="screen" id="ACTIONS">
+      <h2>Welcome, <span id="display-name"></span></h2>
+      <p class="subtitle">Use your iShield key for step-up authentication</p>
+
+      <div class="toggle-row">
+        <label class="toggle-label" for="actions-use-passkeys">Use Passkeys</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="actions-use-passkeys" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="action-grid">
+        <button class="btn btn-action" data-action="make-payment">Make Payment</button>
+        <button class="btn btn-action" data-action="transfer-money">Transfer Money</button>
+        <button class="btn btn-action" data-action="change-setting">Change Setting</button>
+        <button class="btn btn-action" data-action="add-beneficiary">Add Beneficiary</button>
+      </div>
+
+      <div id="action-status" class="flash"></div>
+
+      <button id="logout-btn" class="btn btn-secondary">Log Out</button>
+    </div>
+
+    <!-- Status pills — always visible -->
+    <div class="status-pills">
+      <span class="pill">iShield: <b id="ishield-status">--</b></span>
+      <span class="pill">ZSM: <b id="zsm-status">--</b></span>
+      <span class="pill">Passkey: <b id="passkey-status">--</b></span>
+      <span class="pill">Passkeys+: <b id="passkeys-plus-status">--</b></span>
+    </div>
+
+    <!-- Flash message for enrollment feedback -->
+    <div id="flash-status" class="flash"></div>
+
+  </main>
+
+  <!-- Confirmation Popup -->
+  <div id="confirm-popup" class="popup-overlay">
+    <div class="popup-card">
+      <p id="popup-message"></p>
+      <div class="popup-buttons">
+        <button id="popup-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="popup-continue" class="btn btn-primary">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <button id="suspend-device" class="btn btn-warning-small" disabled>Suspend Device</button>
+    <button id="reset-device" class="btn btn-danger-small">Reset Device</button>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="./state.js"></script>
+  <script type="module" src="./app.js"></script>
+
+</body>
+</html>
