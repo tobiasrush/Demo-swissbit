@@ -196,6 +196,10 @@ function showScreen(screenId) {
   const usernameEl = document.getElementById('username');
   usernameEl.readOnly = (screenId === 'ACTIONS');
 
+  // Show inline passkeys toggle only on ACTIONS screen
+  const inlineToggle = document.getElementById('passkeys-inline-toggle');
+  if (inlineToggle) inlineToggle.hidden = (screenId !== 'ACTIONS');
+
   // Announce screen change to screen readers
   const announcer = document.getElementById('screen-announcer');
   if (announcer) announcer.textContent = SCREEN_ANNOUNCEMENTS[screenId] || '';
@@ -434,11 +438,11 @@ async function handleProtectedAction(actionKey) {
   if (!authResult.success) {
     showFlash('action-status', `${actionLabel} Failed`, 'failure', 2000);
   } else {
+    showFlash('action-status', `${actionLabel} Authorized`, 'success', 2000);
     if (authResult.challengeData) {
       updateChallengeDisplay(authResult.challengeData.challenge, authResult.challengeData.signedChallenge);
     }
     updateAuthIcons({ zsm: true, passkeys: usePasskeys });
-    showFlash('action-status', `${actionLabel} Authorized`, 'success', 2000);
   }
 }
 

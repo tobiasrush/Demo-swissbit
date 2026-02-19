@@ -288,12 +288,12 @@ body {
 #username[readonly] {
   border: none;
   background: var(--color-bg-warm);
-  padding: 10px 14px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   cursor: default;
   color: var(--color-primary);
-  font-weight: 700;
-  font-size: 1.0625rem;
+  font-weight: 600;
+  font-size: 0.875rem;
   margin-bottom: 0;
 }
 #username[readonly]:focus {
@@ -519,6 +519,36 @@ body {
   margin-bottom: 12px;
 }
 
+/* Action-status: always reserves space, no layout shift */
+#action-status {
+  padding: 2px 12px;
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  border: 1px solid transparent;
+  transition: opacity 0.1s ease, background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+}
+
+#action-status.success {
+  opacity: 1;
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+#action-status.failure {
+  opacity: 1;
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
 /* ===== Status Pills ===== */
 
 .status-pills {
@@ -696,6 +726,47 @@ body {
 .toggle-switch input:focus-visible + .toggle-slider {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
+}
+
+/* ===== Inline Toggle (username row) ===== */
+
+.toggle-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.toggle-inline[hidden] {
+  display: none;
+}
+
+.toggle-inline-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.toggle-sm {
+  width: 36px;
+  height: 20px;
+}
+
+.toggle-sm .toggle-slider {
+  border-radius: 20px;
+}
+
+.toggle-sm .toggle-slider::before {
+  width: 14px;
+  height: 14px;
+}
+
+.toggle-sm input:checked + .toggle-slider::before {
+  transform: translateX(16px);
 }
 
 /* ===== Confirmation Popup ===== */

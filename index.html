@@ -35,6 +35,13 @@
     <div class="username-row">
       <label for="username">User ID</label>
       <input type="text" id="username" placeholder="Enter your user ID" autocomplete="off">
+      <div class="toggle-inline" id="passkeys-inline-toggle" hidden>
+        <span class="toggle-inline-label">Passkeys</span>
+        <label class="toggle-switch toggle-sm">
+          <input type="checkbox" id="actions-use-passkeys" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
 
     <!-- SETUP screen — new device, no credentials -->
@@ -56,14 +63,6 @@
 
     <!-- ACTIONS screen — logged in -->
     <div class="screen" id="ACTIONS">
-      <div class="toggle-row">
-        <label class="toggle-label" for="actions-use-passkeys">Use Passkeys</label>
-        <label class="toggle-switch">
-          <input type="checkbox" id="actions-use-passkeys" checked>
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-
       <div class="action-grid">
         <button class="btn btn-action" data-action="make-payment">Make Payment</button>
         <button class="btn btn-action" data-action="transfer-money">Transfer Money</button>
