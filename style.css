@@ -896,6 +896,8 @@ body {
   }
 
   .toggle-inline {
+    flex-basis: 100%;
+    justify-content: flex-end;
     margin-top: -4px;
   }
 
