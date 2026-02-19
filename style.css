@@ -892,6 +892,11 @@ body {
 
   .username-row {
     margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .toggle-inline {
+    margin-top: -4px;
   }
 
   .toggle-row {
